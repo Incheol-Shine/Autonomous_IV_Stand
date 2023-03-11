@@ -2,7 +2,7 @@
 import rospy
 import cv2
 from img_process import ImgProc
-from control_no_comment import Ctrl
+from control import Ctrl
 
 rospy.init_node('camera')
 cap = cv2.VideoCapture(0)
