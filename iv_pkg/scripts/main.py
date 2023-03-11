@@ -19,7 +19,7 @@ while True:
 	ImgProc.image_process()
 	ImgProc.emergence()
 	movefc.find_min_sona()
-	movefc.serial(ImgProc.square, ImgProc.value, ImgProc.left_length, ImgProc.right_length, ImgProc.top_length)
+	movefc.control(ImgProc.square, ImgProc.value, ImgProc.left_length, ImgProc.right_length, ImgProc.top_length)
 
 	if cv2.waitKey(1) == 27:
 		break  # esc to quit

@@ -40,6 +40,7 @@ class Ctrl:
 		print(f"x:{self.linear_x}, y:{self.linear_y}, z:{self.angular_z}")
 		self.pub.publish(msg)
 
+	''' angle 은 마크의 왼쪽, 오른쪽 길이의 평균값과 위쪽 길이의 비율을 구한 뒤 삼각비로 구한다 '''
 	def get_angle(self, left_length, right_length, top_length):
 		angle = 0
 		side_length = 0.5*(left_length + right_length)
@@ -52,19 +53,23 @@ class Ctrl:
 				angle = -angle
 		return angle
 
+	
 	def get_angular_z(self, angle):
 		threshold = 200
 		self.angular_z = int(70 * (angle))
 		if (self.angular_z > threshold):
 			self.angular_z = threshold
 		elif (self.angular_z < -threshold):
-			self.angular_z = -threshold			###### angle_z_vel (angle) 값을 보정하는 부분. 역시 함수화 하는게 좋을 듯
+			self.angular_z = -threshold
 
+	''' 장애물이 없을 때 x, y 속도, z 각속도를 구하는 코드'''
 	def get_x_y_z(self, square, value, angle, min_vel, max_vel):
+		''' x 속도는 square(사각형 둘레) 에 비례함 '''
 		self.linear_x = int((0.8 * (100 - square)))
 		if (self.linear_x < 0):
 			self.linear_x *= 0.5
-
+		
+		''' y 속도는 value(화면 중심과 마크 사이의 거리)에 비례함 '''
 		self.linear_y = value
 		if (-min_vel < self.linear_y <= min_vel):
 			self.linear_y = 0
@@ -75,7 +80,8 @@ class Ctrl:
 		elif (max_vel < self.linear_y):
 			self.linear_y = max_vel - min_vel
 		elif (self.linear_y <= -max_vel):
-			self.linear_y = -max_vel + min_vel	###### self.linear_y = value 의 값을 보정하는 부분.
+			self.linear_y = -max_vel + min_vel
+		''' z 각속도는 angle 에 비례하며, 일정 범위를 넘지 않음 '''
 		self.get_angular_z(angle)
 	
 	def get_x_y_z_obstacle(self, value, angle, square):
@@ -103,10 +109,10 @@ class Ctrl:
 			if(square > 100):
 				self.linear_x -= angle
 				self.linear_y = 1.5708	# 90 deg
-										###### 초음파 센서가 감지 된 경우의 x_vel, y_vel 값 설정.
+										
 		self.get_angular_z(angle)
 
-	def serial(self, square, value, left_length, right_length, top_length):
+	def control(self, square, value, left_length, right_length, top_length):
 		min_vel = 2
 		max_vel = 42
 		angle = 0
@@ -116,6 +122,7 @@ class Ctrl:
 
 		angle = self.get_angle(left_length, right_length, top_length)
 		
+		''' 장애물이 감지된 경우, 움직임 모드를 1로 바꿈 '''
 		if(self.min_sona[1] < 35):
 			angle -= 0.05 * value
 			move_mode = 1
@@ -127,7 +134,7 @@ class Ctrl:
 			self.move(move_mode)
 			self.count = 1
 			self.last_vels = [self.linear_x, self.linear_y, self.angular_z]
-		else:
+		else: 
 			if(self.count <= 100):
 				print(self.count)
 				self.linear_x = self.last_vels[0] / self.count
