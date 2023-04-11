@@ -9,8 +9,8 @@ cap = cv2.VideoCapture(0)
 cap.set(3,160)	# 가로 픽셀 길이
 cap.set(4,90)	# 세로 ''
 
-cv2.namedWindow('img_color')							# 'img_color' 이름의 창 생성
-cv2.setMouseCallback('img_color', ImgProc.mouse_callback)	#
+cv2.namedWindow('img_color')	# 'img_color' 이름의 창 생성
+cv2.setMouseCallback('img_color', ImgProc.mouse_callback)
 rate = rospy.Rate(10)
 movefc = Ctrl()
 

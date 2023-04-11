@@ -16,29 +16,30 @@ class Ctrl:
 		self.linear_y = 0
 		self.linear_z = 0
 
+	''' 5개의 초음파센서로부터 받은 센서값 self.sona에 저장 '''
 	def sonarCB(self, sonar_val):
 		for i in range(5):
 			self.sona[i] = sonar_val.data[i]
 
+	''' 가장 거리가 짧은 초음파센서(index)를 min_sona[0]에, 센서값을 min_sona[1]에 저장 '''
 	def find_min_sona(self):
 		rospy.Subscriber('sonar', Float32MultiArray, self.sonarCB)
 		temp = min(self.sona)
 		self.min_sona = [self.sona.index(temp), temp]
-		# rospy.loginfo(self.min_sona)
 
+	''' 모터 속도를 구한 뒤 토픽으로 보내는 코드 '''
 	def move(self, move_mode):
-		msg = Float32MultiArray()
-		msg.data = [0, 0, 0]
+		motor = Float32MultiArray()
+		motor.data = [0, 0, 0]
 		if (move_mode == 0):
-			msg.data[0] = -self.linear_x * 0.866 - self.linear_y * 0.5 - self.angular_z * 0.2
-			msg.data[1] = +self.linear_x * 0.866 - self.linear_y * 0.5 - self.angular_z * 0.2
-			msg.data[2] = +self.linear_y - self.angular_z*0.2
+			motor.data[0] = -self.linear_x * 0.866 - self.linear_y * 0.5 - self.angular_z * 0.2
+			motor.data[1] = +self.linear_x * 0.866 - self.linear_y * 0.5 - self.angular_z * 0.2
+			motor.data[2] = +self.linear_y - self.angular_z * 0.2
 		else:
-			msg.data[0] = self.linear_x * math.cos(2.61799 - self.linear_y) - self.angular_z * 0.2
-			msg.data[1] = self.linear_x * math.cos(0.523599 - self.linear_y) - self.angular_z * 0.2
-			msg.data[2] = self.linear_x * math.cos(4.71239 - self.linear_y) - self.angular_z * 0.2
-		print(f"x:{self.linear_x}, y:{self.linear_y}, z:{self.angular_z}")
-		self.pub.publish(msg)
+			motor.data[0] = self.linear_x * math.cos(2.61799 - self.linear_y) - self.angular_z * 0.2
+			motor.data[1] = self.linear_x * math.cos(0.523599 - self.linear_y) - self.angular_z * 0.2
+			motor.data[2] = self.linear_x * math.cos(4.71239 - self.linear_y) - self.angular_z * 0.2
+		self.pub.publish(motor)
 
 	''' angle 은 마크의 왼쪽, 오른쪽 길이의 평균값과 위쪽 길이의 비율을 구한 뒤 삼각비로 구한다 '''
 	def get_angle(self, left_length, right_length, top_length):
@@ -53,7 +54,7 @@ class Ctrl:
 				angle = -angle
 		return angle
 
-	
+	''' z 각속도를 구하는 코드 '''
 	def get_angular_z(self, angle):
 		threshold = 200
 		self.angular_z = int(70 * (angle))
@@ -84,49 +85,39 @@ class Ctrl:
 		''' z 각속도는 angle 에 비례하며, 일정 범위를 넘지 않음 '''
 		self.get_angular_z(angle)
 	
-	def get_x_y_z_obstacle(self, value, angle, square):
+	''' 장애물이 있을 때 x, y 속도, z 각속도를 구하는 코드'''
+	def get_x_y_z_obstacle(self, value, square):
+		self.linear_x = int((0.8 * (100 - square)))
+		self.angular_z = -value
 		if(self.min_sona[0] == 4):
-			if(value < 0):
-				self.linear_x -= angle
-				self.linear_y = 0		# 0 deg
+			self.linear_y = 0		# 0 deg
 
 		elif(self.min_sona[0] == 3):
-			if(value < 0):
-				self.linear_x -= angle
-				self.linear_y = 0.5236	# 30 deg
+			self.linear_y = 0.5236	# 30 deg
 			
 		elif(self.min_sona[0] == 2):
-			if(value < 0):
-				self.linear_x -= angle
-				self.linear_y = 1.0472	# 60 deg
+			self.linear_y = 1.0472	# 60 deg
 
 		elif(self.min_sona[0] == 1):
-			if(square > 100):
-				self.linear_x -= angle
-				self.linear_y = 1.4708	# 84 deg
+			self.linear_y = 1.4708	# 84 deg
 
 		elif(self.min_sona[0] == 0):
-			if(square > 100):
-				self.linear_x -= angle
-				self.linear_y = 1.5708	# 90 deg
-										
-		self.get_angular_z(angle)
+			self.linear_y = 1.5708	# 90 deg
+
 
 	def control(self, square, value, left_length, right_length, top_length):
 		min_vel = 2
 		max_vel = 42
-		angle = 0
-		
+
 		self.angular_z = 0
 		move_mode = 0
-
 		angle = self.get_angle(left_length, right_length, top_length)
 		
 		''' 장애물이 감지된 경우, 움직임 모드를 1로 바꿈 '''
 		if(self.min_sona[1] < 35):
 			angle -= 0.05 * value
 			move_mode = 1
-			self.get_x_y_z_obstacle(value, angle, square)
+			self.get_x_y_z_obstacle(value, square)
 		else:
 			self.get_x_y_z(square, value, angle, min_vel, max_vel)
 
